@@ -61,7 +61,11 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   const t = token();
   if (t) headers['Authorization'] = `Bearer ${t}`;
   const res = await fetch(BASE + path, { ...init, headers });
-  if (res.status === 401) { setToken(null); window.location.href = '/login'; throw new Error('Session expired'); }
+  // A 401 from the login/register endpoints means "wrong credentials" — let the
+  // form show the error. Only treat other 401s as an expired session.
+  if (res.status === 401 && path !== '/api/auth/login' && path !== '/api/auth/register') {
+    setToken(null); window.location.href = '/login'; throw new Error('Session expired');
+  }
   if (!res.ok) {
     let detail = res.statusText;
     try { const j = await res.json(); detail = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail); } catch { /* ignore */ }
