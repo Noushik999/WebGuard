@@ -13,6 +13,9 @@ class Base(DeclarativeBase):
 def _make_engine():
     settings = get_settings()
     url = settings.DATABASE_URL
+    # Render and some providers issue postgres://; SQLAlchemy needs postgresql://
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
     connect_args = {}
     if url.startswith("sqlite"):
         connect_args = {"check_same_thread": False}

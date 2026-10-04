@@ -1,6 +1,8 @@
 /* Typed WebGuard API client. Token lives in localStorage (see SECURITY.md). */
 
-const BASE = '';
+/* VITE_API_URL is set at build time for split deployments (e.g. Vercel
+   frontend talking to a Render backend). Empty = same-origin (dev proxy). */
+const BASE: string = (import.meta as any).env?.VITE_API_URL ?? '';
 
 export type Severity = 'Critical' | 'High' | 'Medium' | 'Low' | 'Informational';
 
