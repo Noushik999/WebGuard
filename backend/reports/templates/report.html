@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebGuard Security Assessment Report — {{ target.name }}</title>
+<style>
+  :root { --bg:#0f1420; --card:#182032; --ink:#e8edf5; --muted:#93a0b8; --line:#26314a;
+          --crit:#f04452; --high:#f5853c; --med:#f5c542; --low:#4aa8ff; --info:#8b93a7; }
+  * { box-sizing:border-box; }
+  body { font-family: -apple-system, "Segoe UI", Inter, Roboto, sans-serif; background:var(--bg); color:var(--ink); margin:0; line-height:1.6; }
+  .wrap { max-width:960px; margin:0 auto; padding:32px 24px 64px; }
+  header.cover { border-bottom:2px solid var(--line); padding-bottom:24px; margin-bottom:32px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .shield { width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,#3b82f6,#8b5cf6);
+            display:flex; align-items:center; justify-content:center; font-size:24px; }
+  h1 { font-size:28px; margin:8px 0 4px; }
+  h2 { font-size:20px; margin:40px 0 12px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+  h3 { font-size:16px; margin:20px 0 8px; }
+  .sub { color:var(--muted); }
+  .demo-banner { background:#3a2b00; border:1px solid var(--med); color:var(--med); padding:12px 16px;
+                 border-radius:10px; margin:16px 0; font-weight:600; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:16px 0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .card .num { font-size:30px; font-weight:700; }
+  .card .lbl { color:var(--muted); font-size:13px; }
+  .score-ring { width:150px; height:150px; border-radius:50%; display:flex; flex-direction:column;
+                align-items:center; justify-content:center; margin:8px 0;
+                background:concentric-gradient; border:6px solid #3b82f6; }
+  .score-ring .n { font-size:44px; font-weight:800; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:700; color:#0b0e14; }
+  .b-Critical{background:var(--crit);} .b-High{background:var(--high);} .b-Medium{background:var(--med);}
+  .b-Low{background:var(--low);} .b-Informational{background:var(--info);}
+  .finding { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin:14px 0; page-break-inside:avoid; }
+  .finding h3 { margin:0 0 6px; font-size:17px; }
+  .meta { color:var(--muted); font-size:13px; margin-bottom:8px; }
+  pre.ev { background:#0b0f1a; border:1px solid var(--line); border-radius:8px; padding:12px;
+           white-space:pre-wrap; word-break:break-word; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; }
+  .notice { background:#1a2438; border-left:4px solid #3b82f6; padding:12px 16px; border-radius:0 10px 10px 0; margin:16px 0; }
+  .toc a { color:#9db8e8; text-decoration:none; } .toc li{margin:4px 0;}
+  footer { margin-top:48px; color:var(--muted); font-size:13px; border-top:1px solid var(--line); padding-top:16px; }
+  @media print { body{background:#fff;color:#111;} .card,.finding{background:#fff;border-color:#ddd;} :root{--ink:#111;--muted:#555;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="cover">
+  <div class="brand"><div class="shield">🛡️</div><div><strong>WebGuard</strong><br><span class="sub">Automated Web Security Assessment &amp; Remediation Platform</span></div></div>
+  <h1>Security Assessment Report</h1>
+  <div class="sub">{{ target.name }} &nbsp;·&nbsp; {{ target.url }} &nbsp;·&nbsp; {{ fmt_dt(assessment.created_at) }}</div>
+  {% if is_demo %}<div class="demo-banner">DEMO / SAMPLE — findings on this page are simulated for demonstration purposes.</div>{% endif %}
+</header>
+
+<div class="toc card">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#exec">Executive Summary</a></li><li><a href="#target">Target Information</a></li>
+    <li><a href="#method">Methodology</a></li><li><a href="#score">Security Score</a></li>
+    <li><a href="#summary">Findings Summary</a></li><li><a href="#detail">Detailed Findings</a></li>
+    <li><a href="#remed">Recommended Remediation</a></li><li><a href="#compare">Rescan Comparison</a></li>
+    <li><a href="#limits">Limitations</a></li><li><a href="#auth">Authorization Notice</a></li>
+    <li><a href="#refs">References</a></li>
+  </ol>
+</div>
+
+<h2 id="exec">1. Executive Summary</h2>
+<div class="grid">
+  <div class="card"><div class="num">{{ score if score is not none else "—" }}/100</div><div class="lbl">Security score ({{ grade }})</div></div>
+  <div class="card"><div class="num">{{ findings|length }}</div><div class="lbl">Findings</div></div>
+  <div class="card"><div class="num" style="color:var(--crit)">{{ sev_counts.get("Critical",0) }}</div><div class="lbl">Critical</div></div>
+  <div class="card"><div class="num" style="color:var(--high)">{{ sev_counts.get("High",0) }}</div><div class="lbl">High</div></div>
+  <div class="card"><div class="num" style="color:var(--med)">{{ sev_counts.get("Medium",0) }}</div><div class="lbl">Medium</div></div>
+</div>
+<p>
+{% if score is not none and score >= 75 %}
+<strong>{{ target.name }}</strong> shows a solid baseline security configuration ({{ score }}/100). The findings below are
+mostly hardening opportunities — address the medium-severity items to raise the bar further.
+{% elif score is not none and score >= 60 %}
+<strong>{{ target.name }}</strong> scored {{ score }}/100 — a reasonable start, but several issues need attention.
+Prioritize the high and medium findings in §7 before the next release cycle.
+{% elif score is not none %}
+<strong>{{ target.name }}</strong> scored {{ score }}/100, indicating significant concerns. We recommend treating the
+critical and high findings as priority fixes and rescanning afterwards to verify improvement.
+{% else %}The assessment did not complete, so no score is available.{% endif %}
+</p>
+
+<h2 id="target">2. Target Information</h2>
+<table>
+  <tr><th>Target</th><td>{{ target.name }}</td></tr>
+  <tr><th>URL</th><td>{{ target.url }}</td></tr>
+  <tr><th>Description</th><td>{{ target.description or "—" }}</td></tr>
+  <tr><th>Scope</th><td>{{ target.scope or "—" }}</td></tr>
+  <tr><th>Assessment ID</th><td>#{{ assessment.id }}</td></tr>
+  <tr><th>Assessment date (3)</th><td>{{ fmt_dt(assessment.created_at) }} → {{ fmt_dt(assessment.finished_at) }}</td></tr>
+  <tr><th>Duration</th><td>{{ "%.1f"|format(assessment.duration_s or 0) }}s</td></tr>
+  <tr><th>Scanner version</th><td>{{ assessment.scanner_version }}</td></tr>
+  <tr><th>Authorization confirmed</th><td>{% if target.auth_confirmed %}Yes ({{ fmt_dt(target.auth_confirmed_at) }}){% else %}No{% endif %}</td></tr>
+</table>
+
+<h2 id="method">5. Methodology</h2>
+<p>WebGuard performed a <strong>passive, non-destructive</strong> assessment: it fetched the target's public pages
+exactly as a normal browser would and analyzed response headers, TLS behavior, cookies, CORS responses,
+and visible technology signals. No exploitation, authentication bypass, credential use, or denial-of-service
+testing was performed. Each scanner module runs in isolation with timeouts and request budgets; a module
+failure never aborts the assessment.</p>
+{% if module_errors %}
+<p class="sub">Module issues during this run:</p>
+<ul>{% for m,e in module_errors.items() %}<li><code>{{ m }}</code>: {{ e }}</li>{% endfor %}</ul>
+{% endif %}
+
+<h2 id="score">6. Security Score</h2>
+<p>The score (0–100) is computed deterministically: every finding deducts
+<code>severity-weight × confidence</code> (Critical 25, High 15, Medium 8, Low 3, Informational 0).
+<strong>A high score measures only the checks WebGuard performs — it is not a guarantee of security.</strong></p>
+{% if score_breakdown %}
+<table><tr><th>Finding</th><th>Severity</th><th>Confidence</th><th>Deduction</th></tr>
+{% for d in score_breakdown %}<tr><td>{{ d.title }}</td><td><span class="badge b-{{ d.severity }}">{{ d.severity }}</span></td><td>{{ "%.0f"|format(d.confidence*100) }}%</td><td>−{{ d.deduction }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+
+<h2 id="summary">7. Findings Summary</h2>
+<table><tr><th>Severity</th><th>Count</th></tr>
+{% for s in severity_order %}<tr><td><span class="badge b-{{ s }}">{{ s }}</span></td><td>{{ sev_counts.get(s,0) }}</td></tr>{% endfor %}
+</table>
+
+<h2 id="detail">8. Detailed Findings</h2>
+{% for s in severity_order %}{% for f in by_severity[s] %}
+<div class="finding">
+  <h3>{{ f.title }}</h3>
+  <div class="meta"><span class="badge b-{{ f.severity }}">{{ f.severity }}</span>
+    &nbsp; Confidence {{ "%.0f"|format(f.confidence*100) }}% &nbsp;·&nbsp; {{ f.category }}
+    &nbsp;·&nbsp; {{ f.owasp_mapping }} &nbsp;·&nbsp; Module: <code>{{ f.scanner }}</code></div>
+  <p><strong>What was observed:</strong> {{ f.description }}</p>
+  <p><strong>Why it matters:</strong> {{ f.why_it_matters }}</p>
+  <p><strong>Evidence:</strong></p><pre class="ev">{{ f.evidence }}</pre>
+  <p><strong>Recommended fix:</strong> {{ f.recommendation }}</p>
+  <p><strong>How to verify:</strong> {{ f.verification }}</p>
+  <p class="sub"><strong>Affected URL:</strong> {{ f.affected_url }}<br>
+  {% if f.references %}<strong>References:</strong> {% for r in f.references %}<a href="{{ r }}">{{ r }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</p>
+</div>
+{% endfor %}{% endfor %}
+{% if not findings %}<p>No findings — the target passed all of WebGuard's checks.</p>{% endif %}
+
+<h2 id="remed">10. Recommended Remediation (priority order)</h2>
+<ol>{% for f in top_remediations %}<li><strong>{{ f.title }}</strong> <span class="badge b-{{ f.severity }}">{{ f.severity }}</span><br>{{ f.recommendation }}</li>{% endfor %}</ol>
+{% if not top_remediations %}<p>No priority remediations — consider the informational findings as hardening opportunities.</p>{% endif %}
+
+<h2 id="compare">11. Rescan Comparison</h2>
+{% if comparison %}
+<p>Compared assessment #{{ comparison.assessment_a_id }} → #{{ comparison.assessment_b_id }}:
+score {{ comparison.score_a }} → {{ comparison.score_b }}
+({% if comparison.score_delta and comparison.score_delta >= 0 %}+{% endif %}{{ comparison.score_delta or 0 }}).
+Resolved {{ comparison.resolved_count }}, new {{ comparison.new_count }}, persistent {{ comparison.persistent_count }}.</p>
+{% else %}<p class="sub">No previous completed assessment was available for comparison. Rescan after remediation to track progress here.</p>{% endif %}
+
+<h2 id="limits">12. Limitations</h2>
+<ul>
+  <li>Passive assessment only: no authenticated scanning, deep crawling, or active exploitation.</li>
+  <li>The score reflects only WebGuard's checks; absence of findings is not proof of security.</li>
+  <li>Version-based dependency notes are risk signals — vulnerabilities are not confirmed by version alone.</li>
+  <li>AI-generated explanations interpret scanner evidence and never create findings.</li>
+</ul>
+
+<h2 id="auth">13. Authorization / Assessment Notice</h2>
+<div class="notice">
+  This assessment was performed by WebGuard against <strong>{{ target.url }}</strong> with the operator's
+  confirmation that they own the target or have explicit permission to assess it
+  {% if target.auth_confirmed %} (confirmed {{ fmt_dt(target.auth_confirmed_at) }}){% endif %}.
+  Only assess systems you own or are explicitly authorized to test.
+</div>
+
+<h2 id="refs">14. References</h2>
+<ul>
+  <li>OWASP Top 10 — https://owasp.org/Top10/</li>
+  <li>OWASP Secure Headers Project — https://owasp.org/www-project-secure-headers/</li>
+  <li>Mozilla Server Side TLS — https://wiki.mozilla.org/Security/Server_Side_TLS</li>
+</ul>
+
+<footer>Generated by WebGuard {{ now }}{% if generated_by %} · {{ generated_by }}{% endif %} · Scanner v{{ assessment.scanner_version }}</footer>
+</div>
+</body>
+</html>
