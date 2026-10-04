@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: #0b0f1a;
+  color: #e8edf5;
+  font-family: -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+}
+
+.card {
+  background: #141b2e;
+  border: 1px solid #232f4d;
+  border-radius: 14px;
+}
+
+.input {
+  background: #0f1526;
+  border: 1px solid #2a3757;
+  border-radius: 10px;
+  padding: 10px 14px;
+  width: 100%;
+  color: #e8edf5;
+  outline: none;
+}
+.input:focus { border-color: #3b82f6; }
+
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-weight: 600;
+  color: white;
+  transition: opacity 0.15s;
+}
+.btn-primary:hover { opacity: 0.9; }
+.btn-primary:disabled { opacity: 0.5; }
+
+.btn-ghost {
+  border: 1px solid #2a3757;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-weight: 500;
+  color: #c6d0e4;
+}
+.btn-ghost:hover { border-color: #3b82f6; }
+
+.sev-Critical { background: #f04452; color: #0b0e14; }
+.sev-High { background: #f5853c; color: #0b0e14; }
+.sev-Medium { background: #f5c542; color: #0b0e14; }
+.sev-Low { background: #4aa8ff; color: #0b0e14; }
+.sev-Informational { background: #8b93a7; color: #0b0e14; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@keyframes pulse-bar { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+.scan-pulse { animation: pulse-bar 1.6s ease-in-out infinite; }
