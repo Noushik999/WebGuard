@@ -35,10 +35,18 @@ export function AssessmentPage() {
     };
     load();
     timer = setInterval(load, 2000);
-    api.assessments().then(all => setHistory(all.filter(x => x.target_id === a?.target_id && x.status === 'COMPLETED' && x.id !== +id!).map(x => ({ id: x.id })))).catch(() => {});
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, sevFilter]);
+
+  useEffect(() => {
+    if (!id || !a) return;
+    api.assessments()
+      .then(all => setHistory(all
+        .filter(x => x.target_id === a.target_id && x.status === 'COMPLETED' && x.id !== +id)
+        .map(x => ({ id: x.id }))))
+      .catch(() => {});
+  }, [id, a]);
 
   async function genReport() {
     if (!id) return;
