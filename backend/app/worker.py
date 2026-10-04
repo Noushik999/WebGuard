@@ -56,6 +56,10 @@ def _run_one(assessment_id: int, cancel_event: threading.Event):
 
         asm.status = "VALIDATING"
         asm.started_at = datetime.now(timezone.utc)
+        asm.config = {**(asm.config or {}),
+                      "allow_private_networks": settings.ALLOW_PRIVATE_NETWORKS,
+                      "request_timeout": settings.SCAN_REQUEST_TIMEOUT,
+                      "max_requests": settings.SCAN_MAX_REQUESTS}
         db.commit()
         audit(db, "assessment.started", user_id=asm.user_id,
               assessment_id=asm.id, target_id=target.id, url=target.url)

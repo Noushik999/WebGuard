@@ -26,6 +26,23 @@ class RequestBudgetExceeded(Exception):
     pass
 
 
+class _SimpleResponse:
+    """Minimal response stand-in for streamed GETs (bounded body)."""
+
+    def __init__(self, status_code: int, headers: httpx.Headers, content: bytes,
+                 url: str, truncated: bool):
+        self.status_code = status_code
+        self.headers = headers
+        self.content = content
+        self.url = url
+        self.truncated = truncated
+        self.request_chain: list[str] = []
+
+    @property
+    def text(self) -> str:
+        return self.content.decode("utf-8", errors="replace")
+
+
 class SafeHttpClient:
     def _new_pool(self):
         try:
@@ -85,19 +102,34 @@ class SafeHttpClient:
         chain = [current]
         for _ in range(MAX_REDIRECTS + 1):
             self._check_budget()
-            resp = self._client.get(current, headers=headers)
-            # Truncate body eagerly to bound memory.
-            _ = resp.content  # force read
-            if len(resp.content) > MAX_BODY_BYTES:
-                resp._content = resp.content[:MAX_BODY_BYTES]  # noqa: SLF001
-            if resp.status_code in (301, 302, 303, 307, 308) and resp.headers.get("location"):
-                nxt = urljoin(current, resp.headers["location"])
+            # Stream the body so a hostile server can't OOM us with a giant
+            # response; we only keep the first MAX_BODY_BYTES.
+            with self._client.stream("GET", current, headers=headers) as resp:
+                chunks: list[bytes] = []
+                kept = 0
+                for chunk in resp.iter_bytes(65536):
+                    if kept < MAX_BODY_BYTES:
+                        take = min(len(chunk), MAX_BODY_BYTES - kept)
+                        chunks.append(chunk[:take])
+                        kept += take
+                    else:
+                        break
+                body = b"".join(chunks)
+                status = resp.status_code
+                resp_headers = resp.headers
+                location = resp_headers.get("location")
+            # Build a lightweight stand-in carrying what modules need.
+            final = _SimpleResponse(
+                status_code=status, headers=resp_headers, content=body,
+                url=current, truncated=kept >= MAX_BODY_BYTES,
+            )
+            if status in (301, 302, 303, 307, 308) and location:
+                nxt = urljoin(current, location)
                 current = self._validated(nxt)
                 chain.append(current)
-                resp.close()
                 continue
-            resp.request_chain = chain  # type: ignore[attr-defined]
-            return resp
+            final.request_chain = chain
+            return final  # type: ignore[return-value]
         raise TargetValidationError("Too many redirects")
 
     def options(self, url: str) -> httpx.Response:
