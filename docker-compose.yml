@@ -1,0 +1,27 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      APP_ENV: production
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/webguard.db}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      ALLOW_PRIVATE_NETWORKS: "false"
+    volumes:
+      - webguard-data:/data
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  webguard-data:
